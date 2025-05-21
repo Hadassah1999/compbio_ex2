@@ -1,13 +1,44 @@
 import random
 import numpy as np
+import pygame
+import sys
 
 def initialize_square(n):
+    
     flattened_square = random.sample(range(1, n ** 2 + 1), n ** 2)
     two_d_square = np.array(flattened_square).reshape(n, n)
     return two_d_square
 
 
-def calculate_loss(square_matrix):
+def loss_diagonal_pairs(square_matrix):
+    n = square_matrix.shape[0]
+    target = n**2 + 1
+    loss = 0
+    half = n // 2
+    
+    for i in range(n - half):
+        a = square_matrix[i, i]
+        b = square_matrix[i + half, i + half]
+        loss += (a + b - target)**2
+
+    for i in range(n - half):
+        a = square_matrix[i, n - 1 - i]
+        b = square_matrix[i + half, n - 1 - (i + half)]
+        loss += (a + b - target)**2
+    return loss
+
+def loss_blocks(square_matrix):
+    n = square_matrix.shape[0]
+    target = 2 * (n**2 + 1)
+    loss = 0
+    for i in range(n - 1):
+        for j in range(n - 1):
+            block_sum = square_matrix[i,j] + square_matrix[i+1,j] + square_matrix[i,j+1] + square_matrix[i+1,j+1]
+            loss += (block_sum - target)**2
+    return loss
+
+def calculate_loss(square_matrix): 
+
     n = square_matrix.shape[0]
 
     expec_sum = n * (n**2 + 1) / 2
@@ -27,6 +58,142 @@ def calculate_loss(square_matrix):
     first_diagonal_loss = np.abs(np.trace(square_matrix) - expec_sum)
     second_diagonal_sum = np.abs(np.trace(np.fliplr(square_matrix)) - expec_sum)
 
-    total_loss = total_row_loss + total_column_loss + first_diagonal_loss + second_diagonal_sum
+    magic_square_loss = 0
+
+    if (n % 4 == 0):
+        magic_square_loss = loss_blocks(square_matrix) + loss_diagonal_pairs(square_matrix)
+
+
+    total_loss = total_row_loss + total_column_loss + first_diagonal_loss + second_diagonal_sum + magic_square_loss
     return total_loss
+
+def draw_matrix_on_surface(matrix, surface, cell_size, font, margin=50):
+    for i, row in enumerate(matrix):
+        for j, val in enumerate(row):
+            rect = pygame.Rect(margin + j*cell_size, margin + i*cell_size, cell_size, cell_size)
+            pygame.draw.rect(surface, (200, 200, 200), rect)
+            pygame.draw.rect(surface, (0, 0, 0), rect, 1)
+            
+            text = font.render(str(val), True, (0, 0, 0))
+            text_rect = text.get_rect(center=rect.center)
+            surface.blit(text, text_rect)
+
+def main():
+    pygame.init()
+    
+    # Fixed screen size
+    DISPLAY_WIDTH = 800
+    DISPLAY_HEIGHT = 600
+    screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
+    pygame.display.set_caption("Magic Square GUI")
+
+    WHITE = (255, 255, 255)
+    GRAY = (200, 200, 200)
+    BLACK = (0, 0, 0)
+    BLUE = (50, 150, 255)
+
+    input_font = pygame.font.Font(None, 48)
+    instruction_font = pygame.font.Font(None, 36)
+
+    input_box = pygame.Rect(200, 150, 200, 50)
+    button_box = pygame.Rect(250, 220, 100, 40)
+    user_text = ''
+    active = False
+
+    current_screen = "input"
+    matrix = None
+    matrix_surface = None
+    scroll_x, scroll_y = 0, 0
+    cell_size = 60
+    margin = 50
+    font = None
+
+    clock = pygame.time.Clock()
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+            if current_screen == "input":
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    active = input_box.collidepoint(event.pos)
+                    if button_box.collidepoint(event.pos):
+                        try:
+                            n = int(user_text)
+                            if n > 0:
+                                matrix = initialize_square(n)
+
+                                # Create large surface for matrix
+                                surf_width = n * cell_size + 2 * margin
+                                surf_height = n * cell_size + 2 * margin
+                                matrix_surface = pygame.Surface((surf_width, surf_height))
+                                font_size = int(cell_size * 0.5)
+                                font = pygame.font.Font(None, font_size)
+                                draw_matrix_on_surface(matrix, matrix_surface, cell_size, font, margin)
+
+                                scroll_x, scroll_y = 0, 0
+                                current_screen = "matrix"
+                        except ValueError:
+                            user_text = ''
+                elif event.type == pygame.KEYDOWN and active:
+                    if event.key == pygame.K_RETURN:
+                        try:
+                            n = int(user_text)
+                            if n > 0:
+                                matrix = initialize_square(n)
+
+                                surf_width = n * cell_size + 2 * margin
+                                surf_height = n * cell_size + 2 * margin
+                                matrix_surface = pygame.Surface((surf_width, surf_height))
+                                font_size = int(cell_size * 0.5)
+                                font = pygame.font.Font(None, font_size)
+                                draw_matrix_on_surface(matrix, matrix_surface, cell_size, font, margin)
+
+                                scroll_x, scroll_y = 0, 0
+                                current_screen = "matrix"
+                        except ValueError:
+                            user_text = ''
+                    elif event.key == pygame.K_BACKSPACE:
+                        user_text = user_text[:-1]
+                    else:
+                        user_text += event.unicode
+
+            elif current_screen == "matrix":
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_UP:
+                        scroll_y = min(scroll_y + 40, 0)
+                    elif event.key == pygame.K_DOWN:
+                        scroll_y -= 40
+                    elif event.key == pygame.K_LEFT:
+                        scroll_x = min(scroll_x + 40, 0)
+                    elif event.key == pygame.K_RIGHT:
+                        scroll_x -= 40
+
+        screen.fill(WHITE)
+
+        if current_screen == "input":
+            pygame.draw.rect(screen, BLUE if active else GRAY, input_box, 2)
+            txt_surface = input_font.render(user_text, True, BLACK)
+            screen.blit(txt_surface, (input_box.x + 10, input_box.y + 10))
+
+            instruction = instruction_font.render("Enter size n for the magic square:", True, BLACK)
+            screen.blit(instruction, (120, 100))
+            pygame.draw.rect(screen, BLUE, button_box)
+            button_text = instruction_font.render("Submit", True, WHITE)
+            screen.blit(button_text, (button_box.x + 10, button_box.y + 5))
+
+        elif current_screen == "matrix":
+            if matrix_surface:
+                screen.blit(matrix_surface, (scroll_x, scroll_y))
+
+        pygame.display.flip()
+        clock.tick(60)
+
+    pygame.quit()
+    sys.exit()
+
+
+if __name__ == "__main__":
+    main()
 
