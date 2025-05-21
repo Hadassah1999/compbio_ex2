@@ -78,6 +78,68 @@ def draw_matrix_on_surface(matrix, surface, cell_size, font, margin=50):
             text_rect = text.get_rect(center=rect.center)
             surface.blit(text, text_rect)
 
+def calculate_magic_square():
+
+def to_inversion_vector(square_matrix):
+    n = len(square_matrix)
+    inv = [0] * n
+    for i in range(n):
+        inv[i] = sum(1 for j in range(i) if square_matrix[j] > square_matrix[i])
+    return inv
+
+def crossover_inversion_vectors(inv1, inv2):
+    n = len(inv1)
+    point = random.randint(1, n - 1)
+    child1 = inv1[:point] + inv2[point:]
+    child2 = inv2[:point] + inv1[point:]
+    return child1, child2
+
+def from_inversion_vector(inv):
+    n = len(inv)
+    square_matrix = []
+    values = list(range(1, n + 1)) 
+    
+    for i in reversed(range(n)):
+        val = values.pop(inv[i])
+        square_matrix.insert(0, val)
+    
+    return square_matrix
+
+
+def mutation(square_matrix):
+    n = square_matrix.shape[0]
+    
+    idx1, idx2 = random.sample(range(n * n), 2)
+    
+    i1, j1 = divmod(idx1, n)
+    i2, j2 = divmod(idx2, n)
+    
+    square_matrix[i1, j1], square_matrix[i2, j2] = square_matrix[i2, j2], square_matrix[i1, j1]
+    
+    return square_matrix
+
+
+def cross_over(parent1, parent2):
+    
+    flat1 = parent1.flatten().tolist()
+    flat2 = parent2.flatten().tolist()
+    
+    inv1 = to_inversion_vector(flat1)
+    inv2 = to_inversion_vector(flat2)
+    
+    child_inv1, child_inv2 = crossover_inversion_vectors(inv1, inv2)
+
+    child_flat1 = from_inversion_vector(child_inv1)
+    child_flat2 = from_inversion_vector(child_inv2)
+    
+    n = parent1.shape[0]
+    child1 = np.array(child_flat1).reshape(n, n)
+    child2 = np.array(child_flat2).reshape(n, n)
+    
+    return child1, child2
+
+
+
 def main():
     pygame.init()
     
