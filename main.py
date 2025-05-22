@@ -3,6 +3,12 @@ import numpy as np
 import pygame
 import sys
 
+P_SIZE = 100
+MUTATION_RATE = 0.1
+MAX_GEN = 200
+
+
+
 def initialize_square(n):
     
     flattened_square = random.sample(range(1, n ** 2 + 1), n ** 2)
@@ -78,7 +84,64 @@ def draw_matrix_on_surface(matrix, surface, cell_size, font, margin=50):
             text_rect = text.get_rect(center=rect.center)
             surface.blit(text, text_rect)
 
-def calculate_magic_square():
+def calculate_magic_square(n):
+    population = np.zeros(P_SIZE)
+
+    for i in range(P_SIZE):
+        population[i] = initialize_square(n)
+
+
+    converge = False
+    i = 0
+    while(not converge or i < MAX_GEN):
+        fitness = np.zeros(P_SIZE)
+        for i in range(P_SIZE):
+            fitness[i] = calculate_loss(population[i])
+            if (fitness[i] == 0):
+                converge = True
+        
+        population = calculate_next_gen(population, n)
+        i += 1
+
+
+    
+
+
+
+def calculate_next_gen(population, n):
+
+    fitness = np.zeros(P_SIZE)
+
+    mutant_number = int(n * MUTATION_RATE)
+
+    indices = random.sample(range(n), mutant_number) 
+
+    for idx in indices:
+        population[idx] = mutation(population[idx])
+
+    for i in range(P_SIZE):
+        fitness[i] = calculate_loss(population[i])
+    
+    highest_fitness = np.argsort(fitness)[:2] 
+
+    elite = [population[i] for i in highest_fitness]
+
+    remaining_indices = [i for i in range(P_SIZE) if i not in highest_fitness]
+    remaining_population = [population[i] for i in remaining_indices]
+    
+    children = np.array
+    for i in range(0, len(remaining_population) -1, 2):
+        parent1 = remaining_population[i]
+        parent2 = remaining_population[i + 1]
+        child1, child2 = cross_over(parent1, parent2)
+        children.extend([child1, child2])
+
+        if len(remaining_population) % 2 != 0:
+            children.append(remaining_population[-1])
+
+    new_population = children[:P_SIZE - 2] + elite
+    return new_population
+
 
 def to_inversion_vector(square_matrix):
     n = len(square_matrix)
