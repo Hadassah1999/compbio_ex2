@@ -73,36 +73,50 @@ def calculate_loss(square_matrix):
     total_loss = total_row_loss + total_column_loss + first_diagonal_loss + second_diagonal_sum + magic_square_loss
     return total_loss
 
-def draw_matrix_on_surface(matrix, surface, cell_size, font, margin=50):
-    for i, row in enumerate(matrix):
-        for j, val in enumerate(row):
-            rect = pygame.Rect(margin + j*cell_size, margin + i*cell_size, cell_size, cell_size)
-            pygame.draw.rect(surface, (200, 200, 200), rect)
-            pygame.draw.rect(surface, (0, 0, 0), rect, 1)
-            
-            text = font.render(str(val), True, (0, 0, 0))
+def draw_matrix(matrix, surface, font):
+    surface.fill((255, 255, 255))
+    n = matrix.shape[0]
+    width, height = surface.get_size()
+
+    cell_size = min((width - 40) // n, (height - 40) // n)
+    margin_x = (width - cell_size * n) // 2
+    margin_y = (height - cell_size * n) // 2
+
+    for i in range(n):
+        for j in range(n):
+            x = margin_x + j * cell_size
+            y = margin_y + i * cell_size
+            rect = pygame.Rect(x, y, cell_size, cell_size)
+            pygame.draw.rect(surface, (0, 0, 0), rect, 2)
+
+            number = str(matrix[i][j])
+            text = font.render(number, True, (0, 0, 0))
             text_rect = text.get_rect(center=rect.center)
             surface.blit(text, text_rect)
 
 def calculate_magic_square(n):
-    population = np.zeros(P_SIZE)
-
-    for i in range(P_SIZE):
-        population[i] = initialize_square(n)
-
-
+    population = [initialize_square(n) for _ in range(P_SIZE)]
+    
+    best_matrix = None
+    best_fitness = float('inf')
     converge = False
-    i = 0
-    while(not converge or i < MAX_GEN):
-        fitness = np.zeros(P_SIZE)
-        for i in range(P_SIZE):
-            fitness[i] = calculate_loss(population[i])
-            if (fitness[i] == 0):
-                converge = True
+    gen = 0
+    
+    while not converge and gen < MAX_GEN:
+        fitness = np.array([calculate_loss(ind) for ind in population])
         
-        population = calculate_next_gen(population, n)
-        i += 1
+        min_idx = np.argmin(fitness)
+        if fitness[min_idx] < best_fitness:
+            best_fitness = fitness[min_idx]
+            best_matrix = population[min_idx]
+        
+        if best_fitness == 0:
+            converge = True
 
+        population = calculate_next_gen(population, n)
+        gen += 1
+    
+    return best_matrix
 
     
 
@@ -112,9 +126,9 @@ def calculate_next_gen(population, n):
 
     fitness = np.zeros(P_SIZE)
 
-    mutant_number = int(n * MUTATION_RATE)
+    mutant_number = int(P_SIZE * MUTATION_RATE)
 
-    indices = random.sample(range(n), mutant_number) 
+    indices = random.sample(range(P_SIZE), mutant_number) 
 
     for idx in indices:
         population[idx] = mutation(population[idx])
@@ -122,47 +136,47 @@ def calculate_next_gen(population, n):
     for i in range(P_SIZE):
         fitness[i] = calculate_loss(population[i])
     
-    highest_fitness = np.argsort(fitness)[:2] 
+    lowest_loss_indices = np.argsort(fitness)[:2] 
 
-    elite = [population[i] for i in highest_fitness]
+    elite = [population[i] for i in lowest_loss_indices]
 
-    remaining_indices = [i for i in range(P_SIZE) if i not in highest_fitness]
+    remaining_indices = [i for i in range(P_SIZE) if i not in lowest_loss_indices]
     remaining_population = [population[i] for i in remaining_indices]
     
-    children = np.array
+    children = []
     for i in range(0, len(remaining_population) -1, 2):
         parent1 = remaining_population[i]
         parent2 = remaining_population[i + 1]
         child1, child2 = cross_over(parent1, parent2)
         children.extend([child1, child2])
 
-        if len(remaining_population) % 2 != 0:
-            children.append(remaining_population[-1])
+    if len(remaining_population) % 2 != 0:
+        children.append(remaining_population[-1])
 
     new_population = children[:P_SIZE - 2] + elite
     return new_population
 
 
 def to_inversion_vector(square_matrix):
-    n = len(square_matrix)
-    inv = [0] * n
-    for i in range(n):
-        inv[i] = sum(1 for j in range(i) if square_matrix[j] > square_matrix[i])
+    size = len(square_matrix)
+    inv = [0] * size
+    for i in range(size):
+        inv[i] = sum(square_matrix[j] > square_matrix[i] for j in range(i))
     return inv
 
 def crossover_inversion_vectors(inv1, inv2):
-    n = len(inv1)
-    point = random.randint(1, n - 1)
+    size = len(inv1)
+    point = random.randint(1, size - 2)
     child1 = inv1[:point] + inv2[point:]
     child2 = inv2[:point] + inv1[point:]
     return child1, child2
 
 def from_inversion_vector(inv):
-    n = len(inv)
+    size = len(inv)
     square_matrix = []
-    values = list(range(1, n + 1)) 
+    values = list(range(1, size + 1)) 
     
-    for i in reversed(range(n)):
+    for i in reversed(range(size)):
         val = values.pop(inv[i])
         square_matrix.insert(0, val)
     
@@ -205,11 +219,8 @@ def cross_over(parent1, parent2):
 
 def main():
     pygame.init()
-    
-    # Fixed screen size
-    DISPLAY_WIDTH = 800
-    DISPLAY_HEIGHT = 600
-    screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
+    WIDTH, HEIGHT = 800, 600
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Magic Square GUI")
 
     WHITE = (255, 255, 255)
@@ -218,20 +229,15 @@ def main():
     BLUE = (50, 150, 255)
 
     input_font = pygame.font.Font(None, 48)
+    matrix_font = pygame.font.Font(None, 32)
     instruction_font = pygame.font.Font(None, 36)
 
-    input_box = pygame.Rect(200, 150, 200, 50)
-    button_box = pygame.Rect(250, 220, 100, 40)
+    input_box = pygame.Rect(300, 150, 200, 50)
+    button_box = pygame.Rect(350, 220, 100, 40)
     user_text = ''
     active = False
-
     current_screen = "input"
     matrix = None
-    matrix_surface = None
-    scroll_x, scroll_y = 0, 0
-    cell_size = 60
-    margin = 50
-    font = None
 
     clock = pygame.time.Clock()
     running = True
@@ -240,60 +246,31 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
 
-            if current_screen == "input":
+            elif current_screen == "input":
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     active = input_box.collidepoint(event.pos)
                     if button_box.collidepoint(event.pos):
                         try:
                             n = int(user_text)
                             if n > 0:
-                                matrix = initialize_square(n)
-
-                                # Create large surface for matrix
-                                surf_width = n * cell_size + 2 * margin
-                                surf_height = n * cell_size + 2 * margin
-                                matrix_surface = pygame.Surface((surf_width, surf_height))
-                                font_size = int(cell_size * 0.5)
-                                font = pygame.font.Font(None, font_size)
-                                draw_matrix_on_surface(matrix, matrix_surface, cell_size, font, margin)
-
-                                scroll_x, scroll_y = 0, 0
+                                matrix = calculate_magic_square(n)
                                 current_screen = "matrix"
                         except ValueError:
                             user_text = ''
-                elif event.type == pygame.KEYDOWN and active:
-                    if event.key == pygame.K_RETURN:
-                        try:
-                            n = int(user_text)
-                            if n > 0:
-                                matrix = initialize_square(n)
-
-                                surf_width = n * cell_size + 2 * margin
-                                surf_height = n * cell_size + 2 * margin
-                                matrix_surface = pygame.Surface((surf_width, surf_height))
-                                font_size = int(cell_size * 0.5)
-                                font = pygame.font.Font(None, font_size)
-                                draw_matrix_on_surface(matrix, matrix_surface, cell_size, font, margin)
-
-                                scroll_x, scroll_y = 0, 0
-                                current_screen = "matrix"
-                        except ValueError:
-                            user_text = ''
-                    elif event.key == pygame.K_BACKSPACE:
-                        user_text = user_text[:-1]
-                    else:
-                        user_text += event.unicode
-
-            elif current_screen == "matrix":
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_UP:
-                        scroll_y = min(scroll_y + 40, 0)
-                    elif event.key == pygame.K_DOWN:
-                        scroll_y -= 40
-                    elif event.key == pygame.K_LEFT:
-                        scroll_x = min(scroll_x + 40, 0)
-                    elif event.key == pygame.K_RIGHT:
-                        scroll_x -= 40
+                elif event.type == pygame.KEYDOWN:
+                    if active:
+                        if event.key == pygame.K_RETURN:
+                            try:
+                                n = int(user_text)
+                                if n > 0:
+                                    matrix = calculate_magic_square(n)
+                                    current_screen = "matrix"
+                            except ValueError:
+                                user_text = ''
+                        elif event.key == pygame.K_BACKSPACE:
+                            user_text = user_text[:-1]
+                        else:
+                            user_text += event.unicode
 
         screen.fill(WHITE)
 
@@ -303,14 +280,15 @@ def main():
             screen.blit(txt_surface, (input_box.x + 10, input_box.y + 10))
 
             instruction = instruction_font.render("Enter size n for the magic square:", True, BLACK)
-            screen.blit(instruction, (120, 100))
+            screen.blit(instruction, (180, 100))
+
             pygame.draw.rect(screen, BLUE, button_box)
             button_text = instruction_font.render("Submit", True, WHITE)
             screen.blit(button_text, (button_box.x + 10, button_box.y + 5))
 
         elif current_screen == "matrix":
-            if matrix_surface:
-                screen.blit(matrix_surface, (scroll_x, scroll_y))
+            if matrix is not None:
+                draw_matrix(matrix, screen, matrix_font)
 
         pygame.display.flip()
         clock.tick(60)
