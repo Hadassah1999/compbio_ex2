@@ -7,7 +7,7 @@ MUTATION_RATE_IN_POPULATION = 0.4
 MUTATION_RATE_IN_INDIVIDUAL = 0.03
 MAX_GEN = 1000
 ELITE_SAVED_AS_IS = 5
-CROSS_OVERS_FROM_ELITE = 20
+CROSS_OVERS_FROM_ELITE = 25
 REMAINING_POPULATION_SIZE = P_SIZE - ELITE_SAVED_AS_IS - CROSS_OVERS_FROM_ELITE
 
 def initialize_square(n):
@@ -204,7 +204,7 @@ def calculate_next_gen(population, n):
         child1, child2 = cross_over(parent1, parent2)
         children.extend([child1, child2])
 
-    if len(remaining_population) % 2 != 0:
+    if len(children + elite) % 2 != 0:
         children.append(remaining_population[-1])
 
     new_population = children + elite
