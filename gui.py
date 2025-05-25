@@ -4,7 +4,9 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 import threading
 import numpy as np
-from magic_square import initialize_square, calculate_loss, calculate_next_gen, P_SIZE, MAX_GEN, MUTATION_RATE
+from magic_square import (initialize_square, calculate_loss, calculate_next_gen, P_SIZE, MAX_GEN,
+                          MUTATION_RATE_IN_POPULATION, MUTATION_RATE_IN_INDIVIDUAL, ELITE_SAVED_AS_IS,
+                          CROSS_OVERS_FROM_ELITE)
 
 class MagicSquareGUI(tk.Tk):
     def __init__(self):
@@ -84,7 +86,7 @@ class GraphPage(tk.Frame):
         converge = False
         gen = 0
         no_improvement = 0
-        mutation_rate = MUTATION_RATE
+        mutation_rate = MUTATION_RATE_IN_POPULATION
 
         while not converge and gen < MAX_GEN:
             fitness = np.array([calculate_loss(ind) for ind in population])
@@ -105,12 +107,14 @@ class GraphPage(tk.Frame):
 
             if best_fitness == 0:
                 converge = True
-
-            population = calculate_next_gen(population, n)
-            gen += 1
+            else:
+                population = calculate_next_gen(population, n)
+                gen += 1
 
         result_page = self.controller.frames["ResultPage"]
         result_page.display_matrix(best_matrix, best_fitness)
+        calculate_loss(best_matrix)
+
         self.status_label.config(text="Run Ended. Click below to see matrix.")
 
         self.view_button = tk.Button(self, text="View Final Matrix", command=lambda: self.controller.show_frame("ResultPage"), font=("Arial", 16))

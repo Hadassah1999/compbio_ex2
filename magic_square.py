@@ -2,13 +2,15 @@ import random
 import numpy as np
 import sys
 
-
 P_SIZE = 100
-MUTATION_RATE = 0.3
+MUTATION_RATE_IN_POPULATION = 0.4
+MUTATION_RATE_IN_INDIVIDUAL = 0.03
 MAX_GEN = 1000
+ELITE_SAVED_AS_IS = 5
+CROSS_OVERS_FROM_ELITE = 20
+REMAINING_POPULATION_SIZE = P_SIZE - ELITE_SAVED_AS_IS - CROSS_OVERS_FROM_ELITE
 
 def initialize_square(n):
-    
     flattened_square = random.sample(range(1, n ** 2 + 1), n ** 2)
     two_d_square = np.array(flattened_square).reshape(n, n)
     return two_d_square
@@ -19,7 +21,7 @@ def loss_diagonal_pairs(square_matrix):
     target = n**2 + 1
     loss = 0
     half = n // 2
-    
+
     for i in range(n - half):
         a = square_matrix[i, i]
         b = square_matrix[i + half, i + half]
@@ -29,6 +31,7 @@ def loss_diagonal_pairs(square_matrix):
         a = square_matrix[i, n - 1 - i]
         b = square_matrix[i + half, n - 1 - (i + half)]
         loss += (a + b - target)**2
+
     return loss
 
 def loss_blocks(square_matrix):
@@ -133,7 +136,7 @@ def mutation(square_matrix):
     return square_matrix
 
 def calculate_magic_square(n):
-    global MUTATION_RATE
+    global MUTATION_RATE_IN_POPULATION
     population = [initialize_square(n) for _ in range(P_SIZE)]
     
     best_matrix = None
@@ -155,7 +158,7 @@ def calculate_magic_square(n):
         
 
         if no_improvement > 10:
-                MUTATION_RATE = min(MUTATION_RATE * 1.5, 0.9)
+                MUTATION_RATE_IN_POPULATION = min(MUTATION_RATE_IN_POPULATION * 1.5, 0.9)
 
         if best_fitness == 0:
             converge = True
@@ -163,45 +166,48 @@ def calculate_magic_square(n):
         population = calculate_next_gen(population, n)
         gen += 1
     
-
+    print(best_matrix)
     return best_matrix
-
-    
-
 
 
 def calculate_next_gen(population, n):
-
     fitness = np.zeros(P_SIZE)
 
-    mutant_number = int(P_SIZE * MUTATION_RATE)
+    mutant_number_pop = int(P_SIZE * MUTATION_RATE_IN_POPULATION)
 
-    indices = random.sample(range(P_SIZE), mutant_number) 
+    indices = random.sample(range(P_SIZE), mutant_number_pop)
+
+    mutant_number_ind = int(P_SIZE * MUTATION_RATE_IN_INDIVIDUAL)
 
     for idx in indices:
-        population[idx] = mutation(population[idx])
+        for mut_i in range(mutant_number_ind):
+            population[idx] = mutation(population[idx])
 
     for i in range(P_SIZE):
         fitness[i] = calculate_loss(population[i])
     
-    lowest_loss_indices = np.argsort(fitness)[:5] 
+    lowest_loss_indices = np.argsort(fitness)[:ELITE_SAVED_AS_IS]
 
     elite = [population[i] for i in lowest_loss_indices]
 
-    remaining_indices = [i for i in range(P_SIZE) if i not in lowest_loss_indices]
-    remaining_population = [population[i] for i in remaining_indices]
-    
+    remaining_population_indices = np.argsort(fitness)[:REMAINING_POPULATION_SIZE]
+    remaining_population = [population[i] for i in remaining_population_indices]
+
     children = []
+    for i in range(0, CROSS_OVERS_FROM_ELITE -1, 2):
+        parent1, parent2 = random.sample(elite, 2)
+        child1, child2 = cross_over(parent1, parent2)
+        children.extend([child1, child2])
+
     for i in range(0, len(remaining_population) -1, 2):
-        parent1 = remaining_population[i]
-        parent2 = remaining_population[i + 1]
+        parent1, parent2 = random.sample(remaining_population, 2)
         child1, child2 = cross_over(parent1, parent2)
         children.extend([child1, child2])
 
     if len(remaining_population) % 2 != 0:
         children.append(remaining_population[-1])
 
-    new_population = children[:P_SIZE - 2] + elite
+    new_population = children + elite
     return new_population
 
 def main():
