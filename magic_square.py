@@ -135,6 +135,7 @@ def mutation(square_matrix):
     
     return square_matrix
 
+####this function is uneccessary. Edit the run algorithm function in gui.py######
 def calculate_magic_square(n):
     global MUTATION_RATE_IN_POPULATION
     population = [initialize_square(n) for _ in range(P_SIZE)]
@@ -209,6 +210,19 @@ def calculate_next_gen(population, n):
 
     new_population = children + elite
     return new_population
+
+def calculate_score(n, final_loss):
+    max_loss = 0
+    trials = 10000
+    for _ in range(trials):
+        square = initialize_square(n)
+        loss = calculate_loss(square)
+        if loss > max_loss:
+            max_loss = loss
+    loss_percantage = final_loss / max_loss * 100
+    score = int(100 - loss_percantage)
+    return score
+
 
 def main():
     if len(sys.argv) < 2:
