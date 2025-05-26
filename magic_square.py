@@ -1,6 +1,7 @@
 import random
 import numpy as np
 import sys
+import copy
 
 P_SIZE = 100
 MUTATION_RATE_IN_POPULATION = 0.4
@@ -9,6 +10,10 @@ MAX_GEN = 1000
 ELITE_SAVED_AS_IS = 5
 CROSS_OVERS_FROM_ELITE = 25
 REMAINING_POPULATION_SIZE = P_SIZE - ELITE_SAVED_AS_IS - CROSS_OVERS_FROM_ELITE
+
+DARWIN = False
+LAMARCK = True
+
 
 def initialize_square(n):
     flattened_square = random.sample(range(1, n ** 2 + 1), n ** 2)
@@ -34,6 +39,7 @@ def loss_diagonal_pairs(square_matrix):
 
     return loss
 
+
 def loss_blocks(square_matrix):
     n = square_matrix.shape[0]
     target = 2 * (n**2 + 1)
@@ -43,6 +49,7 @@ def loss_blocks(square_matrix):
             block_sum = square_matrix[i,j] + square_matrix[i+1,j] + square_matrix[i,j+1] + square_matrix[i+1,j+1]
             loss += (block_sum - target)**2
     return loss
+
 
 def calculate_loss(square_matrix): 
 
@@ -70,10 +77,8 @@ def calculate_loss(square_matrix):
     if (n % 4 == 0):
         magic_square_loss = loss_blocks(square_matrix) + loss_diagonal_pairs(square_matrix)
 
-
     total_loss = total_row_loss + total_column_loss + first_diagonal_loss + second_diagonal_sum + magic_square_loss
     return total_loss
-
 
 
 def to_inversion_vector(square_matrix):
@@ -83,12 +88,14 @@ def to_inversion_vector(square_matrix):
         inv[i] = sum(square_matrix[j] > square_matrix[i] for j in range(i))
     return inv
 
+
 def crossover_inversion_vectors(inv1, inv2):
     size = len(inv1)
     point = random.randint(1, size - 2)
     child1 = inv1[:point] + inv2[point:]
     child2 = inv2[:point] + inv1[point:]
     return child1, child2
+
 
 def from_inversion_vector(inv):
     size = len(inv)
@@ -100,7 +107,6 @@ def from_inversion_vector(inv):
         square_matrix.insert(0, val)
     
     return square_matrix
-
 
 
 def cross_over(parent1, parent2):
@@ -123,6 +129,25 @@ def cross_over(parent1, parent2):
     return child1, child2
 
 
+def selective_mutation(square_matrix):
+    attempts = 0
+    best_result = copy.deepcopy(square_matrix)
+    best_fitness = calculate_loss(square_matrix)
+
+    while attempts < 5:
+        mutated_matrix = square_matrix
+
+        for i in range(3):
+            mutated_matrix = mutation(square_matrix)
+        mutated_m_fitness = calculate_loss(mutated_matrix)
+
+        if mutated_m_fitness < best_fitness:
+            best_result = mutated_matrix
+        else:
+            attempts += 1
+    return best_result
+
+
 def mutation(square_matrix):
     n = square_matrix.shape[0]
     
@@ -134,6 +159,7 @@ def mutation(square_matrix):
     square_matrix[i1, j1], square_matrix[i2, j2] = square_matrix[i2, j2], square_matrix[i1, j1]
     
     return square_matrix
+
 
 def calculate_magic_square(n):
     global MUTATION_RATE_IN_POPULATION
@@ -155,7 +181,6 @@ def calculate_magic_square(n):
             no_improvement = 0
         else:
             no_improvement += 1
-        
 
         if no_improvement > 10:
                 MUTATION_RATE_IN_POPULATION = min(MUTATION_RATE_IN_POPULATION * 1.5, 0.9)
@@ -163,11 +188,89 @@ def calculate_magic_square(n):
         if best_fitness == 0:
             converge = True
 
-        population = calculate_next_gen(population, n)
+        if LAMARCK:
+            population = calculate_next_gen_lamarckian(population, n)
+        elif DARWIN:
+            population = calculate_next_gen_darwinian(population, n)
+        else:
+            population = calculate_next_gen(population, n)
         gen += 1
     
     print(best_matrix)
     return best_matrix
+
+
+def get_new_population(prev_population, fitness):
+    lowest_loss_indices = np.argsort(fitness)[:ELITE_SAVED_AS_IS]
+
+    elite = [prev_population[i] for i in lowest_loss_indices]
+
+    remaining_population_indices = np.argsort(fitness)[:REMAINING_POPULATION_SIZE]
+    remaining_population = [prev_population[i] for i in remaining_population_indices]
+
+    children = []
+    for i in range(0, CROSS_OVERS_FROM_ELITE - 1, 2):
+        parent1, parent2 = random.sample(elite, 2)
+        child1, child2 = cross_over(parent1, parent2)
+        children.extend([child1, child2])
+
+    for i in range(0, len(remaining_population) - 1, 2):
+        parent1, parent2 = random.sample(remaining_population, 2)
+        child1, child2 = cross_over(parent1, parent2)
+        children.extend([child1, child2])
+
+    if len(children + elite) % 2 != 0:
+        children.append(remaining_population[-1])
+
+    return elite + children
+
+
+def calculate_next_gen_lamarckian(population, n):
+    fitness = np.zeros(P_SIZE)
+
+    mutant_number_pop = int(P_SIZE * MUTATION_RATE_IN_POPULATION)
+
+    indices = random.sample(range(P_SIZE), mutant_number_pop)
+
+    mutant_number_ind = int(P_SIZE * MUTATION_RATE_IN_INDIVIDUAL)
+
+    for idx in indices:
+        for mut_i in range(mutant_number_ind):
+            population[idx] = mutation(population[idx])
+
+    for adapted_i in range(len(population)):
+        population[adapted_i] = selective_mutation((population[adapted_i]))
+
+    for i in range(P_SIZE):
+        fitness[i] = calculate_loss(population[i])
+
+    new_population = get_new_population(population, fitness)
+    return new_population
+
+
+def calculate_next_gen_darwinian(population, n):
+    fitness = np.zeros(P_SIZE)
+
+    mutant_number_pop = int(P_SIZE * MUTATION_RATE_IN_POPULATION)
+
+    indices = random.sample(range(P_SIZE), mutant_number_pop)
+
+    mutant_number_ind = int(P_SIZE * MUTATION_RATE_IN_INDIVIDUAL)
+
+    adapted_population = copy.deepcopy(population)
+
+    for adapted_i in range(len(adapted_population)):
+        adapted_population[adapted_i] = selective_mutation((adapted_population[adapted_i]))
+
+    for idx in indices:
+        for mut_i in range(mutant_number_ind):
+            population[idx] = mutation(population[idx])
+
+    for i in range(P_SIZE):
+        fitness[i] = calculate_loss(adapted_population[i])
+
+    new_population = get_new_population(population, fitness)
+    return new_population
 
 
 def calculate_next_gen(population, n):
@@ -185,30 +288,11 @@ def calculate_next_gen(population, n):
 
     for i in range(P_SIZE):
         fitness[i] = calculate_loss(population[i])
-    
-    lowest_loss_indices = np.argsort(fitness)[:ELITE_SAVED_AS_IS]
 
-    elite = [population[i] for i in lowest_loss_indices]
+    new_population = get_new_population(population, fitness)
 
-    remaining_population_indices = np.argsort(fitness)[:REMAINING_POPULATION_SIZE]
-    remaining_population = [population[i] for i in remaining_population_indices]
-
-    children = []
-    for i in range(0, CROSS_OVERS_FROM_ELITE -1, 2):
-        parent1, parent2 = random.sample(elite, 2)
-        child1, child2 = cross_over(parent1, parent2)
-        children.extend([child1, child2])
-
-    for i in range(0, len(remaining_population) -1, 2):
-        parent1, parent2 = random.sample(remaining_population, 2)
-        child1, child2 = cross_over(parent1, parent2)
-        children.extend([child1, child2])
-
-    if len(children + elite) % 2 != 0:
-        children.append(remaining_population[-1])
-
-    new_population = children + elite
     return new_population
+
 
 def main():
     if len(sys.argv) < 2:

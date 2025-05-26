@@ -6,7 +6,8 @@ import threading
 import numpy as np
 from magic_square import (initialize_square, calculate_loss, calculate_next_gen, P_SIZE, MAX_GEN,
                           MUTATION_RATE_IN_POPULATION, MUTATION_RATE_IN_INDIVIDUAL, ELITE_SAVED_AS_IS,
-                          CROSS_OVERS_FROM_ELITE)
+                          CROSS_OVERS_FROM_ELITE, LAMARCK, DARWIN, calculate_next_gen_lamarckian,
+                          calculate_next_gen_darwinian)
 
 class MagicSquareGUI(tk.Tk):
     def __init__(self):
@@ -108,7 +109,12 @@ class GraphPage(tk.Frame):
             if best_fitness == 0:
                 converge = True
             else:
-                population = calculate_next_gen(population, n)
+                if LAMARCK:
+                    population = calculate_next_gen_lamarckian(population, n)
+                elif DARWIN:
+                    population = calculate_next_gen_darwinian(population, n)
+                else:
+                    population = calculate_next_gen(population, n)
                 gen += 1
 
         result_page = self.controller.frames["ResultPage"]
