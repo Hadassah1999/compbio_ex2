@@ -36,7 +36,7 @@ def loss_diagonal_pairs(square_matrix):
 
 def loss_blocks(square_matrix):
     n = square_matrix.shape[0]
-    target = 2 * (n**2 + 1)
+    target = 2 * (n**2 + 1) 
     loss = 0
     for i in range(n - 1):
         for j in range(n - 1):
@@ -135,40 +135,6 @@ def mutation(square_matrix):
     
     return square_matrix
 
-####this function is uneccessary. Edit the run algorithm function in gui.py######
-def calculate_magic_square(n):
-    global MUTATION_RATE_IN_POPULATION
-    population = [initialize_square(n) for _ in range(P_SIZE)]
-    
-    best_matrix = None
-    best_fitness = float('inf')
-    converge = False
-    gen = 0
-    
-    while not converge and gen < MAX_GEN:
-        fitness = np.array([calculate_loss(ind) for ind in population])
-
-        min_idx = np.argmin(fitness)
-        if fitness[min_idx] < best_fitness:
-            best_fitness = fitness[min_idx]
-            print(best_fitness)
-            best_matrix = population[min_idx]
-            no_improvement = 0
-        else:
-            no_improvement += 1
-        
-
-        if no_improvement > 10:
-                MUTATION_RATE_IN_POPULATION = min(MUTATION_RATE_IN_POPULATION * 1.5, 0.9)
-
-        if best_fitness == 0:
-            converge = True
-
-        population = calculate_next_gen(population, n)
-        gen += 1
-    
-    print(best_matrix)
-    return best_matrix
 
 
 def calculate_next_gen(population, n):

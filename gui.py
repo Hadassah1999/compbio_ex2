@@ -106,11 +106,7 @@ class StartPage(tk.Frame):
         graph_page.reset_page()
         threading.Thread(target=graph_page.run_algorithm).start()
 
-import tkinter as tk
-from tkinter import ttk
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import numpy as np
+
 
 class GraphPage(tk.Frame):
     def __init__(self, parent, controller):
