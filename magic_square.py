@@ -1,6 +1,6 @@
 import random
 import numpy as np
-import sys
+import matplotlib.pyplot as plt
 import copy
 
 P_SIZE = 100
@@ -12,7 +12,7 @@ CROSS_OVERS_FROM_ELITE = 25
 REMAINING_POPULATION_SIZE = P_SIZE - ELITE_SAVED_AS_IS - CROSS_OVERS_FROM_ELITE
 
 DARWIN = False
-LAMARCK = True
+LAMARCK = False
 
 
 def initialize_square(n):
@@ -80,6 +80,9 @@ def calculate_loss(square_matrix):
     total_loss = total_row_loss + total_column_loss + first_diagonal_loss + second_diagonal_sum + magic_square_loss
     return total_loss
 
+def calculate_fitness(loss):
+    return 1 / (1 + loss)
+
 
 def to_inversion_vector(square_matrix):
     size = len(square_matrix)
@@ -134,7 +137,7 @@ def selective_mutation(square_matrix):
     best_result = copy.deepcopy(square_matrix)
     best_fitness = calculate_loss(square_matrix)
 
-    while attempts < 5:
+    while attempts < 20:
         mutated_matrix = square_matrix
 
         for i in range(3):
@@ -143,6 +146,7 @@ def selective_mutation(square_matrix):
 
         if mutated_m_fitness < best_fitness:
             best_result = mutated_matrix
+            best_fitness = copy.deepcopy(mutated_m_fitness)
         else:
             attempts += 1
     return best_result
@@ -235,7 +239,7 @@ def calculate_next_gen_darwinian(population, n):
     return new_population
 
 
-def calculate_next_gen(population, n):
+def calculate_next_gen(population):
     fitness = np.zeros(P_SIZE)
 
     mutant_number_pop = int(P_SIZE * MUTATION_RATE_IN_POPULATION)
@@ -256,22 +260,219 @@ def calculate_next_gen(population, n):
     return new_population
 
 
+def calculate_score(n, final_loss):
+    max_loss = 0
+    trials = 10000
+    for _ in range(trials):
+        square = initialize_square(n)
+        loss = calculate_loss(square)
+        if loss > max_loss:
+            max_loss = loss
+    loss_percantage = final_loss / max_loss * 100
+    score = int(100 - loss_percantage)
+    return score
+
+
+
+def calculate_magic_matrix(n):
+        
+        population = [initialize_square(n) for _ in range(P_SIZE)]
+
+        best_matrix = None
+        best_fitness = float('inf')
+        loss_over_gens = []
+        generations = []
+
+        converge = False
+        gen = 0
+        no_improvement = 0
+        mutation_rate = MUTATION_RATE_IN_POPULATION
+        fitness = np.array([calculate_loss(ind) for ind in population])
+
+        while not converge and gen < MAX_GEN:
+            
+            min_idx = np.argmin(fitness)
+
+            if fitness[min_idx] < best_fitness:
+                best_fitness = fitness[min_idx]
+                best_matrix = population[min_idx]
+                generations.append(gen)
+                loss_over_gens.append(best_fitness)
+                
+                no_improvement = 0
+            else:
+                no_improvement += 1
+
+        
+            if no_improvement > 10:
+                mutation_rate = min(mutation_rate * 1.5, 0.9)
+
+            if best_fitness == 0:
+                converge = True
+            else:
+                if LAMARCK:
+                    population = calculate_next_gen_lamarckian(population, n)
+                elif DARWIN:
+                    population = calculate_next_gen_darwinian(population, n)
+                else:
+                    population = calculate_next_gen(population)
+
+                fitness = np.array([calculate_loss(ind) for ind in population])
+                if not any(np.array_equal(ind, best_matrix) for ind in population):
+                    worst_idx = np.argmin(fitness)
+                    population[worst_idx] = best_matrix.copy()
+            
+                gen += 1
+
+
+
+
+def plot_improvement_slope(n):
+    population = [initialize_square(n) for _ in range(P_SIZE)]
+
+    best_matrix = None
+    best_fitness = float('inf')
+    loss_over_gens = []
+    generations = []
+
+    converge = False
+    gen = 0
+    no_improvement = 0
+    mutation_rate = MUTATION_RATE_IN_POPULATION
+    fitness = np.array([calculate_loss(ind) for ind in population])
+
+    while not converge and gen < MAX_GEN:
+        min_idx = np.argmin(fitness)
+
+        if fitness[min_idx] < best_fitness:
+            best_fitness = fitness[min_idx]
+            best_matrix = population[min_idx]
+            generations.append(gen)
+            loss_over_gens.append(best_fitness)
+            no_improvement = 0
+        else:
+            no_improvement += 1
+
+        if no_improvement > 10:
+            mutation_rate = min(mutation_rate * 1.5, 0.9)
+
+        if best_fitness == 0:
+            converge = True
+        else:
+            if LAMARCK:
+                population = calculate_next_gen_lamarckian(population, n)
+            elif DARWIN:
+                population = calculate_next_gen_darwinian(population, n)
+            else:
+                population = calculate_next_gen(population)
+
+            fitness = np.array([calculate_loss(ind) for ind in population])
+            if not any(np.array_equal(ind, best_matrix) for ind in population):
+                worst_idx = np.argmin(fitness)
+                population[worst_idx] = best_matrix.copy()
+
+            gen += 1
+
+    # === Calculate Improvement Slopes ===
+    slopes = []
+    slope_gens = []
+    for i in range(1, len(loss_over_gens)):
+        delta_loss = loss_over_gens[i] - loss_over_gens[i - 1]
+        delta_gen = generations[i] - generations[i - 1]
+        slope = delta_loss / delta_gen  # Usually negative
+        slopes.append(slope)
+        slope_gens.append(generations[i])  # Mark generation where this slope ends
+
+    # === Plotting ===
+    plt.figure(figsize=(10, 5))
+    plt.plot(slope_gens, slopes, marker='o', linestyle='-', color='orange')
+    plt.axhline(0, color='gray', linestyle='--')
+    plt.title(f"Improvement Slopes Over Generations (n={n})")
+    plt.xlabel("Generation (at new best)")
+    plt.ylabel("Slope of Loss Improvement")
+    plt.grid(True)
+    plt.show()
+
+import matplotlib.pyplot as plt
+
+def compare_improvement_slopes(n_values):
+    plt.figure(figsize=(12, 6))
+
+    for n in n_values:
+        # Initialize population
+        population = [initialize_square(n) for _ in range(P_SIZE)]
+
+        best_matrix = None
+        best_fitness = float('inf')
+        loss_over_gens = []
+        generations = []
+
+        converge = False
+        gen = 0
+        no_improvement = 0
+        mutation_rate = MUTATION_RATE_IN_POPULATION
+        fitness = np.array([calculate_loss(ind) for ind in population])
+
+        while not converge and gen < MAX_GEN:
+            min_idx = np.argmin(fitness)
+
+            if fitness[min_idx] < best_fitness:
+                best_fitness = fitness[min_idx]
+                best_matrix = population[min_idx]
+                generations.append(gen)
+                loss_over_gens.append(best_fitness)
+                no_improvement = 0
+            else:
+                no_improvement += 1
+
+            if no_improvement > 10:
+                mutation_rate = min(mutation_rate * 1.5, 0.9)
+
+            if best_fitness == 0:
+                converge = True
+            else:
+                if LAMARCK:
+                    population = calculate_next_gen_lamarckian(population, n)
+                elif DARWIN:
+                    population = calculate_next_gen_darwinian(population, n)
+                else:
+                    population = calculate_next_gen(population)
+
+                fitness = np.array([calculate_loss(ind) for ind in population])
+                if not any(np.array_equal(ind, best_matrix) for ind in population):
+                    worst_idx = np.argmin(fitness)
+                    population[worst_idx] = best_matrix.copy()
+
+                gen += 1
+
+        # Calculate slopes
+        slopes = []
+        slope_gens = []
+        for i in range(1, len(loss_over_gens)):
+            delta_loss = loss_over_gens[i] - loss_over_gens[i - 1]
+            delta_gen = generations[i] - generations[i - 1]
+            slope = delta_loss / delta_gen if delta_gen != 0 else 0
+            slopes.append(slope)
+            slope_gens.append(generations[i])
+
+        # Plot for current n
+        plt.plot(slope_gens, slopes, marker='o', linestyle='-', label=f'n={n}')
+
+    plt.axhline(0, color='gray', linestyle='--')
+    plt.title("Improvement Slopes Over Generations for Different n")
+    plt.xlabel("Generation (at new best)")
+    plt.ylabel("Slope of Loss Improvement")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
+
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python script.py <n>")
-        return
-    
-    try:
-        n = int(sys.argv[1])
-    except ValueError:
-        print("Please enter a valid integer for n.")
-        return
-
-    matrix = initialize_square(n)
-    print(matrix)
-    
-    print(calculate_magic_square(n))
+    n = 4  # or any multiple of 4
+    compare_improvement_slopes([4, 5, 8])
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
