@@ -195,6 +195,7 @@ class GraphPage(tk.Frame):
         n = self.controller.n_value.get()
         population = [initialize_square(n) for _ in range(get_p_size())]
 
+        loss = np.array([calculate_loss(ind) for ind in population])
         total_init_loss = 0
         for i in range(get_p_size()):
             total_init_loss += calculate_loss(population[i])
@@ -213,10 +214,9 @@ class GraphPage(tk.Frame):
 
         mutation_rate_pop = get_mutation_rate_in_population()
         mutation_rate_ind = get_mutation_no_in_individual()
-        loss = np.array([calculate_loss(ind) for ind in population])
 
         while not converge and gen < get_max_gen() and not self.stop_requested:
-            
+
             min_idx = np.argmin(loss)
 
             if loss[min_idx] < best_loss:
@@ -224,7 +224,7 @@ class GraphPage(tk.Frame):
                 best_matrix = population[min_idx]
                 generations.append(gen)
                 loss_over_gens.append(best_loss)
-                fitness_over_gens.append(calculate_fitness(best_loss, avg_init_loss))
+                fitness_over_gens.append(round(calculate_fitness(best_loss, avg_init_loss)), 2)
 
                 self.update_plot(generations, fitness_over_gens)
                 no_improvement = 0
