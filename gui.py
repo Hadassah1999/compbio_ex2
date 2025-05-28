@@ -224,7 +224,7 @@ class GraphPage(tk.Frame):
                 best_matrix = population[min_idx]
                 generations.append(gen)
                 loss_over_gens.append(best_loss)
-                fitness_over_gens.append(round(calculate_fitness(best_loss, avg_init_loss)), 2)
+                fitness_over_gens.append(round(calculate_fitness(best_loss, avg_init_loss), 2))
 
                 self.update_plot(generations, fitness_over_gens)
                 no_improvement = 0
