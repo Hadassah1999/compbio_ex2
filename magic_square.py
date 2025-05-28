@@ -3,16 +3,87 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 
-P_SIZE = 100
-MUTATION_RATE_IN_POPULATION = 0.4
-MUTATION_RATE_IN_INDIVIDUAL = 0.03
-MAX_GEN = 1000
-ELITE_SAVED_AS_IS = 5
-CROSS_OVERS_FROM_ELITE = 25
-REMAINING_POPULATION_SIZE = P_SIZE - ELITE_SAVED_AS_IS - CROSS_OVERS_FROM_ELITE
+P_SIZE = 0
+MUTATION_RATE_IN_POPULATION = 0
+MUTATION_NO_IN_INDIVIDUAL = 0
+MAX_GEN = 0
+ELITE_SAVED_AS_IS = 0
+CROSS_OVERS_FROM_ELITE = 0
 
 DARWIN = False
 LAMARCK = False
+
+
+def get_p_size():
+    return P_SIZE
+
+
+def get_mutation_rate_in_population():
+    return MUTATION_RATE_IN_POPULATION
+
+
+def get_mutation_no_in_individual():
+    return MUTATION_NO_IN_INDIVIDUAL
+
+
+def get_max_gen():
+    return MAX_GEN
+
+
+def get_elite_saved_as_is():
+    return ELITE_SAVED_AS_IS
+
+
+def get_cross_overs_from_elite():
+    return CROSS_OVERS_FROM_ELITE
+
+
+def get_darwin():
+    return DARWIN
+
+
+def get_lamarck():
+    return LAMARCK
+
+
+def set_p_size(value):
+    global P_SIZE
+    P_SIZE = value
+
+
+def set_mutation_rate_in_population(value):
+    global MUTATION_RATE_IN_POPULATION
+    MUTATION_RATE_IN_POPULATION = value
+
+
+def set_mutation_no_in_individual(value):
+    global MUTATION_NO_IN_INDIVIDUAL
+    MUTATION_NO_IN_INDIVIDUAL = value
+
+
+def set_max_gen(value):
+    global MAX_GEN
+    MAX_GEN = value
+
+
+def set_elite_saved_as_is(value):
+    global ELITE_SAVED_AS_IS
+    ELITE_SAVED_AS_IS = value
+
+
+def set_cross_overs_from_elite(value):
+    global CROSS_OVERS_FROM_ELITE
+    CROSS_OVERS_FROM_ELITE = value
+
+
+def set_darwin(value: bool):
+    global DARWIN
+    DARWIN = value
+
+
+def set_lamarck(value: bool):
+    global LAMARCK
+    LAMARCK = value
 
 
 def initialize_square(n):
@@ -80,8 +151,12 @@ def calculate_loss(square_matrix):
     total_loss = total_row_loss + total_column_loss + first_diagonal_loss + second_diagonal_sum + magic_square_loss
     return total_loss
 
-def calculate_fitness(loss):
-    return 1 / (1 + loss)
+
+def calculate_fitness(loss, avg_init_loss):
+    if loss == 0:
+        return 1
+    else:
+        return 1 / (1 + (loss / avg_init_loss))
 
 
 def to_inversion_vector(square_matrix):
@@ -135,18 +210,18 @@ def cross_over(parent1, parent2):
 def selective_mutation(square_matrix):
     attempts = 0
     best_result = copy.deepcopy(square_matrix)
-    best_fitness = calculate_loss(square_matrix)
+    best_loss = calculate_loss(square_matrix)
 
     while attempts < 20:
         mutated_matrix = square_matrix
 
         for i in range(3):
             mutated_matrix = mutation(square_matrix)
-        mutated_m_fitness = calculate_loss(mutated_matrix)
+        mutated_m_loss = calculate_loss(mutated_matrix)
 
-        if mutated_m_fitness < best_fitness:
+        if mutated_m_loss < best_loss:
             best_result = mutated_matrix
-            best_fitness = copy.deepcopy(mutated_m_fitness)
+            best_loss = copy.deepcopy(mutated_m_loss)
         else:
             attempts += 1
     return best_result
@@ -165,13 +240,15 @@ def mutation(square_matrix):
     return square_matrix
 
 
+def get_new_population(prev_population, loss):
+    global P_SIZE, ELITE_SAVED_AS_IS, CROSS_OVERS_FROM_ELITE
+    REMAINING_POPULATION_SIZE = P_SIZE - ELITE_SAVED_AS_IS - CROSS_OVERS_FROM_ELITE
 
-def get_new_population(prev_population, fitness):
-    lowest_loss_indices = np.argsort(fitness)[:ELITE_SAVED_AS_IS]
+    lowest_loss_indices = np.argsort(loss)[:ELITE_SAVED_AS_IS]
 
     elite = [prev_population[i] for i in lowest_loss_indices]
 
-    remaining_population_indices = np.argsort(fitness)[:REMAINING_POPULATION_SIZE]
+    remaining_population_indices = np.argsort(loss)[:REMAINING_POPULATION_SIZE]
     remaining_population = [prev_population[i] for i in remaining_population_indices]
 
     children = []
@@ -192,13 +269,13 @@ def get_new_population(prev_population, fitness):
 
 
 def calculate_next_gen_lamarckian(population, n):
-    fitness = np.zeros(P_SIZE)
+    loss = np.zeros(P_SIZE)
 
     mutant_number_pop = int(P_SIZE * MUTATION_RATE_IN_POPULATION)
 
     indices = random.sample(range(P_SIZE), mutant_number_pop)
 
-    mutant_number_ind = int(P_SIZE * MUTATION_RATE_IN_INDIVIDUAL)
+    mutant_number_ind = int(MUTATION_NO_IN_INDIVIDUAL)
 
     for idx in indices:
         for mut_i in range(mutant_number_ind):
@@ -208,20 +285,21 @@ def calculate_next_gen_lamarckian(population, n):
         population[adapted_i] = selective_mutation((population[adapted_i]))
 
     for i in range(P_SIZE):
-        fitness[i] = calculate_loss(population[i])
+        loss[i] = calculate_loss(population[i])
 
-    new_population = get_new_population(population, fitness)
+    new_population = get_new_population(population, loss)
     return new_population
 
 
 def calculate_next_gen_darwinian(population, n):
-    fitness = np.zeros(P_SIZE)
+    loss = np.zeros(P_SIZE)
 
     mutant_number_pop = int(P_SIZE * MUTATION_RATE_IN_POPULATION)
 
     indices = random.sample(range(P_SIZE), mutant_number_pop)
 
-    mutant_number_ind = int(P_SIZE * MUTATION_RATE_IN_INDIVIDUAL)
+    n = population[0].shape[0]
+    mutant_number_ind = int(MUTATION_NO_IN_INDIVIDUAL)
 
     adapted_population = copy.deepcopy(population)
 
@@ -233,29 +311,29 @@ def calculate_next_gen_darwinian(population, n):
             population[idx] = mutation(population[idx])
 
     for i in range(P_SIZE):
-        fitness[i] = calculate_loss(adapted_population[i])
+        loss[i] = calculate_loss(adapted_population[i])
 
-    new_population = get_new_population(population, fitness)
+    new_population = get_new_population(population, loss)
     return new_population
 
 
 def calculate_next_gen(population):
-    fitness = np.zeros(P_SIZE)
+    loss = np.zeros(P_SIZE)
 
     mutant_number_pop = int(P_SIZE * MUTATION_RATE_IN_POPULATION)
 
     indices = random.sample(range(P_SIZE), mutant_number_pop)
 
-    mutant_number_ind = int(P_SIZE * MUTATION_RATE_IN_INDIVIDUAL)
+    mutant_number_ind = int(MUTATION_NO_IN_INDIVIDUAL)
 
     for idx in indices:
         for mut_i in range(mutant_number_ind):
             population[idx] = mutation(population[idx])
 
     for i in range(P_SIZE):
-        fitness[i] = calculate_loss(population[i])
+        loss[i] = calculate_loss(population[i])
 
-    new_population = get_new_population(population, fitness)
+    new_population = get_new_population(population, loss)
 
     return new_population
 
@@ -273,82 +351,28 @@ def calculate_score(n, final_loss):
     return score
 
 
-
-def calculate_magic_matrix(n):
-        
-        population = [initialize_square(n) for _ in range(P_SIZE)]
-
-        best_matrix = None
-        best_fitness = float('inf')
-        loss_over_gens = []
-        generations = []
-
-        converge = False
-        gen = 0
-        no_improvement = 0
-        mutation_rate = MUTATION_RATE_IN_POPULATION
-        fitness = np.array([calculate_loss(ind) for ind in population])
-
-        while not converge and gen < MAX_GEN:
-            
-            min_idx = np.argmin(fitness)
-
-            if fitness[min_idx] < best_fitness:
-                best_fitness = fitness[min_idx]
-                best_matrix = population[min_idx]
-                generations.append(gen)
-                loss_over_gens.append(best_fitness)
-                
-                no_improvement = 0
-            else:
-                no_improvement += 1
-
-        
-            if no_improvement > 10:
-                mutation_rate = min(mutation_rate * 1.5, 0.9)
-
-            if best_fitness == 0:
-                converge = True
-            else:
-                if LAMARCK:
-                    population = calculate_next_gen_lamarckian(population, n)
-                elif DARWIN:
-                    population = calculate_next_gen_darwinian(population, n)
-                else:
-                    population = calculate_next_gen(population)
-
-                fitness = np.array([calculate_loss(ind) for ind in population])
-                if not any(np.array_equal(ind, best_matrix) for ind in population):
-                    worst_idx = np.argmin(fitness)
-                    population[worst_idx] = best_matrix.copy()
-            
-                gen += 1
-
-
-
-
 def plot_improvement_slope(n):
     population = [initialize_square(n) for _ in range(P_SIZE)]
 
     best_matrix = None
-    best_fitness = float('inf')
+    best_loss = float('inf')
     loss_over_gens = []
     generations = []
 
     converge = False
     gen = 0
     no_improvement = 0
-    mutation_rate = MUTATION_RATE_IN_POPULATION
-    fitness = np.array([calculate_loss(ind) for ind in population])
+    mutation_rate = get_mutation_rate_in_population()
+    loss = np.array([calculate_loss(ind) for ind in population])
 
     while not converge and gen < MAX_GEN:
-        min_idx = np.argmin(fitness)
+        min_idx = np.argmin(loss)
 
-        if fitness[min_idx] < best_fitness:
-            best_fitness = fitness[min_idx]
+        if loss[min_idx] < best_loss:
+            best_loss = loss[min_idx]
             best_matrix = population[min_idx]
             generations.append(gen)
-            loss_over_gens.append(best_fitness)
+            loss_over_gens.append(best_loss)
             no_improvement = 0
         else:
             no_improvement += 1
@@ -356,19 +380,19 @@ def plot_improvement_slope(n):
         if no_improvement > 10:
             mutation_rate = min(mutation_rate * 1.5, 0.9)
 
-        if best_fitness == 0:
+        if best_loss == 0:
             converge = True
         else:
-            if LAMARCK:
+            if get_lamarck():
                 population = calculate_next_gen_lamarckian(population, n)
-            elif DARWIN:
+            elif get_darwin():
                 population = calculate_next_gen_darwinian(population, n)
             else:
                 population = calculate_next_gen(population)
 
-            fitness = np.array([calculate_loss(ind) for ind in population])
+            loss = np.array([calculate_loss(ind) for ind in population])
             if not any(np.array_equal(ind, best_matrix) for ind in population):
-                worst_idx = np.argmin(fitness)
+                worst_idx = np.argmin(loss)
                 population[worst_idx] = best_matrix.copy()
 
             gen += 1
@@ -403,7 +427,7 @@ def compare_improvement_slopes(n_values):
         population = [initialize_square(n) for _ in range(P_SIZE)]
 
         best_matrix = None
-        best_fitness = float('inf')
+        best_loss = float('inf')
         loss_over_gens = []
         generations = []
 
@@ -411,16 +435,16 @@ def compare_improvement_slopes(n_values):
         gen = 0
         no_improvement = 0
         mutation_rate = MUTATION_RATE_IN_POPULATION
-        fitness = np.array([calculate_loss(ind) for ind in population])
+        loss = np.array([calculate_loss(ind) for ind in population])
 
         while not converge and gen < MAX_GEN:
-            min_idx = np.argmin(fitness)
+            min_idx = np.argmin(loss)
 
-            if fitness[min_idx] < best_fitness:
-                best_fitness = fitness[min_idx]
+            if loss[min_idx] < best_loss:
+                best_loss = loss[min_idx]
                 best_matrix = population[min_idx]
                 generations.append(gen)
-                loss_over_gens.append(best_fitness)
+                loss_over_gens.append(best_loss)
                 no_improvement = 0
             else:
                 no_improvement += 1
@@ -428,19 +452,19 @@ def compare_improvement_slopes(n_values):
             if no_improvement > 10:
                 mutation_rate = min(mutation_rate * 1.5, 0.9)
 
-            if best_fitness == 0:
+            if best_loss == 0:
                 converge = True
             else:
-                if LAMARCK:
+                if get_lamarck():
                     population = calculate_next_gen_lamarckian(population, n)
-                elif DARWIN:
+                elif get_darwin():
                     population = calculate_next_gen_darwinian(population, n)
                 else:
                     population = calculate_next_gen(population)
 
-                fitness = np.array([calculate_loss(ind) for ind in population])
+                loss = np.array([calculate_loss(ind) for ind in population])
                 if not any(np.array_equal(ind, best_matrix) for ind in population):
-                    worst_idx = np.argmin(fitness)
+                    worst_idx = np.argmin(loss)
                     population[worst_idx] = best_matrix.copy()
 
                 gen += 1
