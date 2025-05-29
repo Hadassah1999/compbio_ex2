@@ -220,11 +220,13 @@ class GraphPage(tk.Frame):
             loss = np.array([calculate_loss(ind) for ind in population])
             min_idx = np.argmin(loss)
 
-            best_loss = loss[min_idx]
-            best_matrix = population[min_idx]
-            generations.append(gen)
-            loss_over_gens.append(best_loss)
-            fitness_over_gens.append(round(calculate_fitness(best_loss, avg_init_loss), 4))
+            if loss[min_idx] < best_loss:
+                best_loss = loss[min_idx]
+                best_matrix = population[min_idx]
+                generations.append(gen)
+                loss_over_gens.append(best_loss)
+
+                fitness_over_gens.append(round(calculate_fitness(best_loss, avg_init_loss), 4))
 
             self.update_plot(generations, fitness_over_gens)
             if loss[min_idx] < best_loss:
