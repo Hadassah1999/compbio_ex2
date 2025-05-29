@@ -216,7 +216,7 @@ class GraphPage(tk.Frame):
         mutation_rate_ind = get_mutation_no_in_individual()
 
         while not converge and gen < get_max_gen() and not self.stop_requested:
-
+            loss = np.array([calculate_loss(ind) for ind in population])
             min_idx = np.argmin(loss)
 
             if loss[min_idx] < best_loss:
@@ -259,7 +259,7 @@ class GraphPage(tk.Frame):
 
         result_page = self.controller.frames["ResultPage"]
         result_page.display_matrix(best_matrix, best_loss, fitness_over_gens[-1])
-        calculate_loss(best_matrix)
+        print(str(calculate_loss(best_matrix)))
 
         self.status_label.config(text="Run Ended. Click below to see matrix.")
 

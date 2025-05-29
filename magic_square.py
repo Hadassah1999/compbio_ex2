@@ -213,10 +213,8 @@ def selective_mutation(square_matrix):
     best_loss = calculate_loss(square_matrix)
 
     while attempts < 20:
-        mutated_matrix = square_matrix
-
-        for i in range(3):
-            mutated_matrix = mutation(square_matrix)
+        mutated_matrix = copy.deepcopy(square_matrix)
+        mutated_matrix = mutation(mutated_matrix)
         mutated_m_loss = calculate_loss(mutated_matrix)
 
         if mutated_m_loss < best_loss:
