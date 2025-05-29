@@ -1,3 +1,4 @@
+import copy
 import tkinter as tk
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -219,14 +220,14 @@ class GraphPage(tk.Frame):
             loss = np.array([calculate_loss(ind) for ind in population])
             min_idx = np.argmin(loss)
 
-            if loss[min_idx] < best_loss:
-                best_loss = loss[min_idx]
-                best_matrix = population[min_idx]
-                generations.append(gen)
-                loss_over_gens.append(best_loss)
-                fitness_over_gens.append(round(calculate_fitness(best_loss, avg_init_loss), 4))
+            best_loss = loss[min_idx]
+            best_matrix = population[min_idx]
+            generations.append(gen)
+            loss_over_gens.append(best_loss)
+            fitness_over_gens.append(round(calculate_fitness(best_loss, avg_init_loss), 4))
 
-                self.update_plot(generations, fitness_over_gens)
+            self.update_plot(generations, fitness_over_gens)
+            if loss[min_idx] < best_loss:
                 no_improvement = 0
             else:
                 no_improvement += 1
@@ -243,6 +244,9 @@ class GraphPage(tk.Frame):
             if best_loss == 0:
                 converge = True
             else:
+                prev_best_matrix_index = np.argmin(loss)
+                prev_best_matrix = copy.deepcopy(population[prev_best_matrix_index])
+
                 if LAMARCK:
                     population = calculate_next_gen_lamarckian(population, n)
                 elif DARWIN:
@@ -251,14 +255,13 @@ class GraphPage(tk.Frame):
                     population = calculate_next_gen(population)
 
                 loss = np.array([calculate_loss(ind) for ind in population])
-                if not any(np.array_equal(ind, best_matrix) for ind in population):
-                    worst_idx = np.argmin(loss)
-                    population[worst_idx] = best_matrix.copy()
+                worst_idx = np.argmax(loss)
+                population[worst_idx] = prev_best_matrix.copy()
             
                 gen += 1
 
         result_page = self.controller.frames["ResultPage"]
-        result_page.display_matrix(best_matrix, best_loss, fitness_over_gens[-1])
+        result_page.display_matrix(best_matrix, best_loss, np.round(fitness_over_gens[-1], 2))
         print(str(calculate_loss(best_matrix)))
 
         self.status_label.config(text="Run Ended. Click below to see matrix.")
@@ -271,7 +274,7 @@ class GraphPage(tk.Frame):
 
     def update_plot(self, gens, losses):
         self.ax.clear()
-        self.ax.set_title("Improved Fitness Over Generations")
+        self.ax.set_title("Improved Maximal Fitness in Population Over Generations")
         self.ax.set_xlabel("Generation")
         self.ax.set_ylabel("Fitness")
         self.ax.plot(gens, losses, 'bo-')
