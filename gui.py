@@ -9,8 +9,7 @@ from tkinter import messagebox
 from magic_square import (initialize_square, calculate_loss, calculate_next_gen, set_max_gen, set_p_size,
                           set_darwin, set_lamarck, set_elite_saved_as_is, set_cross_overs_from_elite,
                           set_mutation_rate_in_population, set_mutation_no_in_individual,
-                          calculate_next_gen_lamarckian, calculate_next_gen_darwinian,
-                          calculate_score, get_darwin, get_lamarck, get_p_size, get_max_gen, get_elite_saved_as_is,
+                          calculate_next_gen_lamarckian, calculate_next_gen_darwinian, get_darwin, get_lamarck, get_p_size, get_max_gen, get_elite_saved_as_is,
                           get_cross_overs_from_elite, get_new_population, get_mutation_rate_in_population,
                           get_mutation_no_in_individual, calculate_fitness)
 
