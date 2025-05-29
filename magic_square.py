@@ -260,8 +260,9 @@ def get_new_population(prev_population, loss):
         child1, child2 = cross_over(parent1, parent2)
         children.extend([child1, child2])
 
-    if len(children + elite) % 2 != 0:
-        children.append(remaining_population[-1])
+    if len(children + elite) != P_SIZE:
+        for i in range(P_SIZE - (len(children) + len(elite))):
+            children.append(remaining_population[-i])
 
     return elite + children
 
@@ -275,12 +276,12 @@ def calculate_next_gen_lamarckian(population, n):
 
     mutant_number_ind = int(MUTATION_NO_IN_INDIVIDUAL)
 
+    for adapted_i in range(len(population)):
+        population[adapted_i] = selective_mutation((population[adapted_i]))
+
     for idx in indices:
         for mut_i in range(mutant_number_ind):
             population[idx] = mutation(population[idx])
-
-    for adapted_i in range(len(population)):
-        population[adapted_i] = selective_mutation((population[adapted_i]))
 
     for i in range(P_SIZE):
         loss[i] = calculate_loss(population[i])
@@ -327,6 +328,7 @@ def calculate_next_gen(population):
     for idx in indices:
         for mut_i in range(mutant_number_ind):
             population[idx] = mutation(population[idx])
+
 
     for i in range(P_SIZE):
         loss[i] = calculate_loss(population[i])
