@@ -206,6 +206,7 @@ class GraphPage(tk.Frame):
         best_loss = float('inf')
         loss_over_gens = []
         fitness_over_gens = []
+        avg_fitness_over_gens = []
 
         generations = []
 
@@ -225,23 +226,19 @@ class GraphPage(tk.Frame):
                 best_matrix = population[min_idx]
                 generations.append(gen)
                 loss_over_gens.append(best_loss)
-
                 fitness_over_gens.append(round(calculate_fitness(best_loss, avg_init_loss), 4))
+            
+            avg_loss = np.mean(loss)
+            avg_fitness = calculate_fitness(avg_loss, avg_init_loss)
+            avg_fitness_over_gens.append(round(avg_fitness, 4))
 
-            self.update_plot(generations, fitness_over_gens)
+            self.update_plot(generations, fitness_over_gens, avg_fitness_over_gens)
             if loss[min_idx] < best_loss:
                 no_improvement = 0
             else:
                 no_improvement += 1
 
             self.generation_label.config(text=str(gen))
-            #if no_improvement > 100:
-                #set_mutation_rate_in_population(min(mutation_rate_pop + 0.01, 0.9))
-            #if no_improvement > 300:
-                #set_mutation_no_in_individual(min(mutation_rate_ind + 1, 0.9))
-
-            if no_improvement > 600:
-                self.terminate_run()
 
             if best_loss == 0:
                 converge = True
@@ -263,7 +260,7 @@ class GraphPage(tk.Frame):
                 gen += 1
 
         result_page = self.controller.frames["ResultPage"]
-        result_page.display_matrix(best_matrix, best_loss, np.round(fitness_over_gens[-1], 2))
+        result_page.display_matrix(best_matrix, best_loss, np.round(fitness_over_gens[-1], 2), gen)
         print(str(calculate_loss(best_matrix)))
 
         self.status_label.config(text="Run Ended. Click below to see matrix.")
@@ -274,13 +271,21 @@ class GraphPage(tk.Frame):
                                      font=("Arial", 16))
         self.view_button.pack(pady=10)
 
-    def update_plot(self, gens, losses):
+    def update_plot(self, gens, best_fitness, avg_fitness):
         self.ax.clear()
-        self.ax.set_title("Improved Maximal Fitness in Population Over Generations")
+        self.ax.set_title("Fitness Over Generations")
         self.ax.set_xlabel("Generation")
         self.ax.set_ylabel("Fitness")
-        self.ax.plot(gens, losses, 'bo-')
-        self.canvas.draw()
+
+    # Plot best fitness (sparse points only when improved)
+        self.ax.plot(gens, best_fitness, 'bo-', label='Best Fitness')
+
+    # Plot average fitness every generation (assumes gen = index)
+        self.ax.plot(range(len(avg_fitness)), avg_fitness, 'go-', label='Avg Fitness')
+
+        self.ax.legend()
+        self.canvas.draw_idle()
+        self.controller.update_idletasks()
 
 class ResultPage(tk.Frame):
     def __init__(self, parent, controller):
@@ -300,11 +305,15 @@ class ResultPage(tk.Frame):
         self.score_label = tk.Label(self, text="", font=("Arial", 16))
         self.score_label.pack(pady=5)
 
+        self.gen_label = tk.Label(self, text="", font=("Arial", 14))
+        self.gen_label.pack(pady=5)
+
+
         back_button = tk.Button(self, text="Back to Start", font=("Arial", 14),
                                 command=lambda: controller.show_frame("StartPage"))
         back_button.pack(pady=20)
 
-    def display_matrix(self, matrix, final_loss, final_fitness):
+    def display_matrix(self, matrix, final_loss, final_fitness, gen):
         self.text.delete("1.0", tk.END)
         for row in matrix:
             row_str = ' '.join(f"{val:4}" for val in row)
@@ -326,6 +335,7 @@ class ResultPage(tk.Frame):
 
         self.score_label.config(text=score_text, fg=color)
 
+        self.gen_label.config(text=f"Converged at Generation: {gen}", fg="blue")
 
     
 if __name__ == "__main__":
